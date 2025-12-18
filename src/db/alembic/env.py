@@ -4,8 +4,11 @@ from alembic import context
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 
-from db.base import SchemaBase  # Import your Base model
-from db.session import db_connection_string
+from src.db.base import SchemaBase  # Import your Base model
+from src.categories import models as category_models
+from src.expenses import models as expense_models
+from src.user import models as user_models
+from src.db.session import db_connection_string
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

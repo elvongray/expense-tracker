@@ -27,6 +27,7 @@ dependencies = [
     "celery[redis]>=5.3.6,<6.0.0",
     "redis>=5.0.4",
     "tzdata>=2024.1",
+    "sqlalchemy>=2.0.45",
 ]
 
 [dependency-groups]
