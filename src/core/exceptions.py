@@ -32,6 +32,11 @@ class InvalidRequestError(ApplicationError):
         super().__init__(msg, status_code, *args)
 
 
+class ConflictError(ApplicationError):
+    def __init__(self, msg="Conflict.", status_code=status.HTTP_409_CONFLICT, *args):
+        super().__init__(msg, status_code, *args)
+
+
 class InvalidToken(ApplicationError):
     def __init__(
         self,
@@ -49,3 +54,8 @@ class ForbiddenError(ApplicationError):
 class UnauthorizedError(ApplicationError):
     def __init__(self, msg: str = "Unauthorized", *args):
         super().__init__(msg, status.HTTP_401_UNAUTHORIZED, *args)
+
+
+class RateLimitError(ApplicationError):
+    def __init__(self, msg: str = "Too many requests", *args):
+        super().__init__(msg, status.HTTP_429_TOO_MANY_REQUESTS, *args)

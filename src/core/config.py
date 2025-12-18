@@ -11,9 +11,10 @@ class Settings(BaseSettings):
 
     APP_NAME: str = "expense-tracker"
     DATABASE_URL: str = ""
-    JWT_SECRET_KEY: str
+    JWT_SECRET_KEY: str = ""
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 14
     BACKEND_CORS_ORIGINS: list[str] = []
     FRONTEND_HOST: str = "http://localhost:3000"
 

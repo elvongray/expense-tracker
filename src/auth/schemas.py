@@ -1,11 +1,57 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr, Field
+
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    username: str = Field(min_length=3, max_length=30)
+    password: str = Field(min_length=8)
+
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+
+class ResendVerificationCodeRequest(BaseModel):
+    email: EmailStr
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    email: EmailStr
+    password: str = Field(min_length=8)
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class RequestPasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    code: str
+    new_password: str = Field(min_length=8)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=8)
+    new_password: str = Field(min_length=8)
 
 
 class Token(BaseModel):
     access_token: str
+    refresh_token: str
     token_type: str = "bearer"
+    expires_in: int
+
+
+class AccessToken(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+
+
+class MessageResponse(BaseModel):
+    message: str
