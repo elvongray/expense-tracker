@@ -14,7 +14,7 @@ docker_app = typer.Typer()
 
 app.add_typer(db_app, name="db")
 app.add_typer(docker_app, name="docker")
-alembic_ini_path = "../src/alembic.ini"
+alembic_ini_path = "alembic.ini"
 
 
 @app.command("start")

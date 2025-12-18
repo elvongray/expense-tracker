@@ -2,7 +2,6 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
-from core.config import settings
 from sqlalchemy.exc import PendingRollbackError
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -10,6 +9,8 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+
+from src.core.config import settings
 
 db_connection_string = f"postgresql://{settings.DATABASE_URL}"
 async_db_connection_string = f"postgresql+asyncpg://{settings.DATABASE_URL}"

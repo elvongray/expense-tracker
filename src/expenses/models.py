@@ -7,8 +7,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import text
 
-from core.uuid import uuid7
-from db.base import SchemaBase
+from src.core.uuid import uuid7
+from src.db.base import SchemaBase
 
 
 class Expense(SchemaBase):

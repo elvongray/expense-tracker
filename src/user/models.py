@@ -1,20 +1,18 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, ForeignKey, Index, Integer, String, Text, TIMESTAMP
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
 
-from core.uuid import uuid7
-from db.base import SchemaBase
+from src.core.uuid import uuid7
+from src.db.base import SchemaBase
 
 
 class User(SchemaBase):
     __tablename__ = "users"
-    __table_args__ = (
-        Index("ix_users_email_lower", func.lower("email"), unique=True),
-    )
+    __table_args__ = (Index("ix_users_email_lower", func.lower("email"), unique=True),)
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid7
@@ -32,9 +30,7 @@ class User(SchemaBase):
         Boolean, nullable=False, default=False, server_default=text("false")
     )
 
-    verification_codes = relationship(
-        "EmailVerificationCode", back_populates="user"
-    )
+    verification_codes = relationship("EmailVerificationCode", back_populates="user")
     reset_codes = relationship("PasswordResetCode", back_populates="user")
     categories = relationship("Category", back_populates="owner")
     expenses = relationship("Expense", back_populates="user")
@@ -60,9 +56,7 @@ class EmailVerificationCode(SchemaBase):
     expires_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )
-    consumed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True)
-    )
+    consumed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     user = relationship("User", back_populates="verification_codes")
 
@@ -87,8 +81,6 @@ class PasswordResetCode(SchemaBase):
     expires_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=False
     )
-    consumed_at: Mapped[datetime | None] = mapped_column(
-        TIMESTAMP(timezone=True)
-    )
+    consumed_at: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
 
     user = relationship("User", back_populates="reset_codes")

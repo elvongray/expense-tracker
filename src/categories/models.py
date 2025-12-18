@@ -5,8 +5,8 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func, text
 
-from core.uuid import uuid7
-from db.base import SchemaBase
+from src.core.uuid import uuid7
+from src.db.base import SchemaBase
 
 
 class Category(SchemaBase):
