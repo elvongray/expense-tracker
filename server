@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+
+import multiprocessing
+import os
+
+import uvicorn
+
+if __name__ == "__main__":
+    debug_mode = os.getenv("ENV") != "production"
+    cores = multiprocessing.cpu_count()
+    web_concurrency = 4 * cores + 1
+
+    log_config_path = "src/core/logging/uvicorn.yaml"
+
+    uvicorn.run(
+        "src.app:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT")),
+        reload=debug_mode,
+        log_config=log_config_path,
+        workers=web_concurrency if not debug_mode else 1,
+    )
