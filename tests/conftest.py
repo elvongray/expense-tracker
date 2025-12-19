@@ -10,12 +10,14 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from src.app import app
+from src.categories.models import Category  # noqa
 from src.core.config import settings
 from src.db.base import SchemaBase
 from src.db.session import db_session
+from src.expenses.models import Expense  # noqa
 
 # Ensure all models are registered with the metadata before create_all
-from src.user.models import User  # noqa
+from src.user.models import EmailVerificationCode, PasswordResetCode, User  # noqa
 
 
 def _parse_database_url() -> dict[str, Any]:

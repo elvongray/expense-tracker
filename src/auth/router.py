@@ -1,5 +1,7 @@
-from auth.dependencies import CurrentUser
-from auth.schemas import (
+from fastapi import APIRouter
+
+from src.auth.dependencies import CurrentUser
+from src.auth.schemas import (
     AccessToken,
     ChangePasswordRequest,
     LoginRequest,
@@ -12,7 +14,7 @@ from auth.schemas import (
     Token,
     VerifyEmailRequest,
 )
-from auth.service import (
+from src.auth.service import (
     change_password,
     login_user,
     refresh_access_token,
@@ -22,8 +24,7 @@ from auth.service import (
     signup_user,
     verify_email,
 )
-from db.dependencies import DbSession
-from fastapi import APIRouter
+from src.db.dependencies import DbSession
 
 router = APIRouter()
 

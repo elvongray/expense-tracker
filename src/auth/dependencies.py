@@ -1,13 +1,14 @@
 import uuid
 from typing import Annotated
 
-from auth.utils import decode_token
-from core.exceptions import InvalidToken, UnauthorizedError
-from db.dependencies import DbSession
 from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
-from user.models import User
+
+from src.auth.utils import decode_token
+from src.core.exceptions import InvalidToken, UnauthorizedError
+from src.db.dependencies import DbSession
+from src.user.models import User
 
 bearer_scheme = HTTPBearer(auto_error=False)
 

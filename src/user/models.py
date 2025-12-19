@@ -12,7 +12,10 @@ from src.db.base import SchemaBase
 
 class User(SchemaBase):
     __tablename__ = "users"
-    __table_args__ = (Index("ix_users_email_lower", func.lower("email"), unique=True),)
+    __table_args__ = (
+        Index("ix_users_email_lower", func.lower("email"), unique=True),
+        Index("ix_users_username_lower", func.lower("username"), unique=True),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, default=uuid7

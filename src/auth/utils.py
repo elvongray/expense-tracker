@@ -1,22 +1,38 @@
-import hashlib
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from core.config import settings
+import bcrypt
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+from src.core.config import settings
+
 from .constants import CODE_LENGTH
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+MAX_PASSWORD_BYTES = 72
+
+pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__truncate_error=False,
+)
+
+
+def _ensure_password_length(password: str) -> None:
+    if len(password.encode("utf-8")) > MAX_PASSWORD_BYTES:
+        raise ValueError("Password too long; must be <= 72 bytes")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_context.verify(plain, hashed)
+    _ensure_password_length(plain)
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    _ensure_password_length(password)
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
+    return hashed.decode("utf-8")
 
 
 def _create_token(data: dict, expires_delta: timedelta) -> str:
@@ -50,7 +66,3 @@ def decode_token(token: str) -> dict:
 
 def generate_numeric_code() -> str:
     return f"{secrets.randbelow(10 ** CODE_LENGTH):0{CODE_LENGTH}d}"
-
-
-def hash_code(code: str) -> str:
-    return hashlib.sha256(code.encode("utf-8")).hexdigest()

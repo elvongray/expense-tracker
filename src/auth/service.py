@@ -1,12 +1,14 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from auth.constants import (
+from sqlalchemy import func, select, update
+
+from src.auth.constants import (
     CODE_REQUEST_LIMIT_PER_HOUR,
     PASSWORD_RESET_CODE_EXP_MINUTES,
     VERIFICATION_CODE_EXP_MINUTES,
 )
-from auth.schemas import (
+from src.auth.schemas import (
     AccessToken,
     ChangePasswordRequest,
     LoginRequest,
@@ -19,17 +21,16 @@ from auth.schemas import (
     Token,
     VerifyEmailRequest,
 )
-from auth.utils import (
+from src.auth.utils import (
     create_access_token,
     create_refresh_token,
     decode_token,
     generate_numeric_code,
-    hash_code,
     hash_password,
     verify_password,
 )
-from core.config import settings
-from core.exceptions import (
+from src.core.config import settings
+from src.core.exceptions import (
     ConflictError,
     ForbiddenError,
     InvalidRequestError,
@@ -37,17 +38,25 @@ from core.exceptions import (
     RateLimitError,
     UnauthorizedError,
 )
-from db.dependencies import DbSession
-from sqlalchemy import func, select, update
-from user.models import EmailVerificationCode, PasswordResetCode, User
+from src.db.dependencies import DbSession
+from src.user.models import EmailVerificationCode, PasswordResetCode, User
 
 
 def _normalize_email(email: str) -> str:
     return email.strip().lower()
 
 
+def _normalize_username(username: str) -> str:
+    return username.strip().lower()
+
+
 async def _get_user_by_email(session: DbSession, email: str) -> User | None:
     result = await session.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
+async def _get_user_by_username(session: DbSession, username: str) -> User | None:
+    result = await session.execute(select(User).where(User.username == username))
     return result.scalar_one_or_none()
 
 
@@ -63,13 +72,22 @@ async def _rate_limit_exceeded(session: DbSession, model, user_id) -> bool:
 
 async def signup_user(data: SignupRequest, session: DbSession) -> MessageResponse:
     email = _normalize_email(data.email)
-    existing = await _get_user_by_email(session, email)
-    if existing:
-        raise ConflictError("Email already registered")
+    username = _normalize_username(data.username)
+
+    existing_email = await _get_user_by_email(session, email)
+    existing_username = await _get_user_by_username(session, username)
+    if existing_email or existing_username:
+        raise ConflictError("Email or username already registered")
+
+    try:
+        password_hash = hash_password(data.password)
+    except ValueError as exc:
+        raise InvalidRequestError(str(exc)) from exc
 
     user = User(
         email=email,
-        password_hash=hash_password(data.password),
+        username=username,
+        password_hash=password_hash,
         is_email_verified=False,
         token_version=0,
         is_deleted=False,
@@ -99,7 +117,7 @@ async def _create_verification_code(session: DbSession, user: User) -> None:
     code = generate_numeric_code()
     verification = EmailVerificationCode(
         user_id=user.id,
-        code=hash_code(code),
+        code=code,
         expires_at=expires_at,
         consumed_at=None,
     )
@@ -115,13 +133,12 @@ async def verify_email(data: VerifyEmailRequest, session: DbSession) -> MessageR
     if user.is_email_verified:
         return MessageResponse(message="Email verified.")
 
-    code_hash = hash_code(data.code)
     now = datetime.now(timezone.utc)
     result = await session.execute(
         select(EmailVerificationCode)
         .where(
             EmailVerificationCode.user_id == user.id,
-            EmailVerificationCode.code == code_hash,
+            EmailVerificationCode.code == data.code,
             EmailVerificationCode.consumed_at.is_(None),
             EmailVerificationCode.expires_at > now,
         )
@@ -134,7 +151,7 @@ async def verify_email(data: VerifyEmailRequest, session: DbSession) -> MessageR
 
     record.consumed_at = now
     user.is_email_verified = True
-
+    await session.flush()
     return MessageResponse(message="Email verified.")
 
 
@@ -169,7 +186,12 @@ async def login_user(data: LoginRequest, session: DbSession) -> Token:
     if not user.is_email_verified:
         raise ForbiddenError("Email not verified")
 
-    if not verify_password(data.password, user.password_hash):
+    try:
+        password_ok = verify_password(data.password, user.password_hash)
+    except ValueError as exc:
+        raise InvalidRequestError(str(exc)) from exc
+
+    if not password_ok:
         raise UnauthorizedError("Invalid credentials")
 
     payload = {
@@ -244,7 +266,7 @@ async def request_password_reset(
     code = generate_numeric_code()
     reset_code = PasswordResetCode(
         user_id=user.id,
-        code=hash_code(code),
+        code=code,
         expires_at=expires_at,
         consumed_at=None,
     )
@@ -266,7 +288,7 @@ async def reset_password(
         select(PasswordResetCode)
         .where(
             PasswordResetCode.user_id == user.id,
-            PasswordResetCode.code == hash_code(data.code),
+            PasswordResetCode.code == data.code,
             PasswordResetCode.consumed_at.is_(None),
             PasswordResetCode.expires_at > now,
         )
@@ -278,7 +300,11 @@ async def reset_password(
         raise InvalidRequestError("Invalid code")
 
     record.consumed_at = now
-    user.password_hash = hash_password(data.new_password)
+    try:
+        user.password_hash = hash_password(data.new_password)
+        await session.flush()
+    except ValueError as exc:
+        raise InvalidRequestError(str(exc)) from exc
 
     return MessageResponse(message="Password has been reset.")
 
@@ -289,7 +315,10 @@ async def change_password(
     if not verify_password(data.current_password, user.password_hash):
         raise UnauthorizedError("Invalid credentials")
 
-    user.password_hash = hash_password(data.new_password)
+    try:
+        user.password_hash = hash_password(data.new_password)
+    except ValueError as exc:
+        raise InvalidRequestError(str(exc)) from exc
     user.token_version += 1
     await session.flush()
 
