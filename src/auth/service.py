@@ -1,3 +1,4 @@
+import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -40,6 +41,8 @@ from src.core.exceptions import (
 )
 from src.db.dependencies import DbSession
 from src.user.models import EmailVerificationCode, PasswordResetCode, User
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_email(email: str) -> str:
@@ -84,6 +87,7 @@ async def signup_user(data: SignupRequest, session: DbSession) -> MessageRespons
     except ValueError as exc:
         raise InvalidRequestError(str(exc)) from exc
 
+    logger.info("Signup initiated", extra={"email": email, "username": username})
     user = User(
         email=email,
         username=username,
@@ -122,6 +126,7 @@ async def _create_verification_code(session: DbSession, user: User) -> None:
         consumed_at=None,
     )
     session.add(verification)
+    logger.info("Verification code issued", extra={"user_id": str(user.id)})
 
 
 async def verify_email(data: VerifyEmailRequest, session: DbSession) -> MessageResponse:
@@ -151,6 +156,7 @@ async def verify_email(data: VerifyEmailRequest, session: DbSession) -> MessageR
 
     record.consumed_at = now
     user.is_email_verified = True
+    logger.info("Email verified", extra={"user_id": str(user.id)})
     await session.flush()
     return MessageResponse(message="Email verified.")
 
@@ -170,6 +176,9 @@ async def resend_verification_code(
         return MessageResponse(message="Verification code sent.")
 
     if await _rate_limit_exceeded(session, EmailVerificationCode, user.id):
+        logger.warning(
+            "Verification code rate limit hit", extra={"user_id": str(user.id)}
+        )
         raise RateLimitError()
 
     await _create_verification_code(session, user)
@@ -201,6 +210,7 @@ async def login_user(data: LoginRequest, session: DbSession) -> Token:
     }
     access_token = create_access_token({**payload, "type": "access"})
     refresh_token = create_refresh_token({**payload, "type": "refresh"})
+    logger.info("User logged in", extra={"user_id": str(user.id)})
 
     return Token(
         access_token=access_token,
@@ -243,6 +253,7 @@ async def refresh_access_token(data: RefreshRequest, session: DbSession) -> Acce
             "type": "access",
         }
     )
+    logger.info("Access token refreshed", extra={"user_id": str(user.id)})
     return AccessToken(
         access_token=access_token,
         expires_in=60 * settings.ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -258,6 +269,7 @@ async def request_password_reset(
         return MessageResponse(message="If the email exists, a reset code was sent.")
 
     if await _rate_limit_exceeded(session, PasswordResetCode, user.id):
+        logger.warning("Password reset rate limit hit", extra={"user_id": str(user.id)})
         raise RateLimitError()
 
     expires_at = datetime.now(timezone.utc) + timedelta(
@@ -271,6 +283,7 @@ async def request_password_reset(
         consumed_at=None,
     )
     session.add(reset_code)
+    logger.info("Password reset code issued", extra={"user_id": str(user.id)})
 
     return MessageResponse(message="If the email exists, a reset code was sent.")
 
@@ -305,6 +318,7 @@ async def reset_password(
         await session.flush()
     except ValueError as exc:
         raise InvalidRequestError(str(exc)) from exc
+    logger.info("Password reset completed", extra={"user_id": str(user.id)})
 
     return MessageResponse(message="Password has been reset.")
 
@@ -321,5 +335,6 @@ async def change_password(
         raise InvalidRequestError(str(exc)) from exc
     user.token_version += 1
     await session.flush()
+    logger.info("Password changed", extra={"user_id": str(user.id)})
 
     return MessageResponse(message="Password changed.")
